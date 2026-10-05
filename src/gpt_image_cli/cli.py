@@ -41,6 +41,9 @@ Examples:
 
     # Skill launcher (same implementation, installed skill-folder path)
     uv run "$SKILL_DIR/scripts/generate.py" -p "a cat astronaut on the moon"
+
+    # Read a longer prompt from a UTF-8 file; -p is optional
+    gpt-image --pfile prompt.txt
 """
 from __future__ import annotations
 
@@ -111,7 +114,15 @@ def parse_args() -> argparse.Namespace:
         description="Call OpenAI GPT Image 2/2.5 (generations or edits) via the official openai Python SDK.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("-p", "--prompt", required=True, help="Text prompt / edit instruction.")
+    p.add_argument(
+        "-p", "--prompt",
+        help="Text prompt / edit instruction. Optional when --pfile is provided.",
+    )
+    p.add_argument(
+        "--pfile", type=Path,
+        help="UTF-8 prompt file appended after --prompt on a new line. "
+             "At least one of --prompt or --pfile is required.",
+    )
     p.add_argument(
         "-f", "--file",
         help="Output path. Auto-generated as YYYY-MM-DD-HH-MM-SS-<slug>.<ext> if omitted "
@@ -166,6 +177,15 @@ def parse_args() -> argparse.Namespace:
         help="Optional end-user identifier forwarded to OpenAI for abuse tracking.",
     )
     args = p.parse_args()
+    if args.prompt is None and args.pfile is None:
+        p.error("one of --prompt or --pfile is required")
+    if args.pfile is not None:
+        try:
+            file_prompt = args.pfile.expanduser().read_text(encoding="utf-8")
+        except (OSError, UnicodeError, RuntimeError) as e:
+            p.error(f"cannot read prompt file {args.pfile}: {e}")
+        args.prompt = f"{args.prompt}\n{file_prompt}" if args.prompt is not None else file_prompt
+
     image25 = re.fullmatch(r"gpt-image-2\.5-(?:flare|sunburst)(?:-\d{4}-\d{2}-\d{2})?", args.model) is not None
     if args.quality in ("xhigh", "max") and not image25:
         p.error("--quality xhigh/max requires --model gpt-image-2.5-flare or gpt-image-2.5-sunburst")

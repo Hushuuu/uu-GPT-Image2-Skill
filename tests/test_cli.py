@@ -44,6 +44,31 @@ class CliTests(unittest.TestCase):
                              http_client=httpx.Client(transport=httpx.MockTransport(self.respond)))
         self.addCleanup(self.client.close)
 
+    def test_prompt_file_appends_and_can_be_used_alone(self):
+        prompt_file = self.folder / 'prompt.txt'
+        file_prompt = 'Keep the colors muted.'
+        prompt_file.write_text(file_prompt, encoding='utf-8')
+
+        cases = [
+            (['--pfile', str(prompt_file)], file_prompt),
+            (['-p', 'A quiet landscape.', '--pfile', str(prompt_file)],
+             'A quiet landscape.\n' + file_prompt),
+        ]
+        for flags, expected in cases:
+            with self.subTest(flags=flags), patch.object(sys, 'argv', ['gpt-image', *flags]):
+                args = cli.parse_args()
+                self.assertEqual(args.prompt, expected)
+                cli.call_generate(self.client, args)
+                self.assertEqual(json.loads(self.requests[-1].content)['prompt'], expected)
+
+    def test_prompt_argument_required_and_prompt_file_errors_are_reported(self):
+        missing_prompt_file = self.folder / 'missing-prompt.txt'
+        for flags in ([], ['--pfile', str(missing_prompt_file)]):
+            with self.subTest(flags=flags), patch.object(sys, 'argv', ['gpt-image', *flags]), \
+                 contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+                cli.parse_args()
+            self.assertEqual(raised.exception.code, 2)
+
     def respond(self, request):
         self.requests.append(request)
         body = {'created': 0, 'data': [{'b64_json': base64.b64encode(PNG).decode()}]}
@@ -190,6 +215,7 @@ class CliTests(unittest.TestCase):
                                        cwd=self.folder, capture_output=True, text=True)
             self.assertEqual(completed.returncode, 0, completed.stderr)
             self.assertIn('--model', completed.stdout)
+            self.assertIn('--pfile', completed.stdout)
             self.assertIn('xhigh', completed.stdout)
 
 

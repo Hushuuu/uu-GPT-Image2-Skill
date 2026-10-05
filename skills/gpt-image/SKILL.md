@@ -2,7 +2,15 @@
 name: gpt-image
 description: "Generate or edit images with GPT Image 2 or 2.5 through the packaged CLI and Reference Gallery. Use for image requests including imprecise 'GPT 2.5' model names, posters, typography, reference edits, and inpainting; resolve the model choice before generation."
 compatibility: "Requires Python 3.11+ and either `gpt-image`, `uv`, or `uvx`. CLI/API calls read `OPENAI_API_KEY` and may incur OpenAI API charges."
-metadata: {"openclaw":{"requires":{"anyBins":["gpt-image","uv","uvx"]},"primaryEnv":"OPENAI_API_KEY","homepage":"https://github.com/wuyoscar/gpt_image_2_skill"}}
+metadata:
+  {
+    "openclaw":
+      {
+        "requires": { "anyBins": ["gpt-image", "uv", "uvx"] },
+        "primaryEnv": "OPENAI_API_KEY",
+        "homepage": "https://github.com/wuyoscar/gpt_image_2_skill",
+      },
+  }
 ---
 
 # gpt-image
@@ -24,11 +32,11 @@ Fast path: confirmed 2.5 model + precise prompt + “generate now” → preflig
 
 ## Model choice and prompt adaptation
 
-| Choice | API model ID | Suggested use |
-|---|---|---|
-| Flare | `gpt-image-2.5-flare` | Fast general generation and drafts |
+| Choice   | API model ID             | Suggested use                                |
+| -------- | ------------------------ | -------------------------------------------- |
+| Flare    | `gpt-image-2.5-flare`    | Fast general generation and drafts           |
 | Sunburst | `gpt-image-2.5-sunburst` | Precise reference edits and detailed control |
-| Image 2 | `gpt-image-2` | Existing Image 2 workflows and compatibility |
+| Image 2  | `gpt-image-2`            | Existing Image 2 workflows and compatibility |
 
 - If the model is absent, ambiguous (such as “GPT 2.5”), or misspelled, ask one clear question offering **Flare, Sunburst, and Image 2** with these trade-offs, then wait. For a typo, suggest the likely intended choice without silently correcting it. Do not treat `gpt-image-2.5` as an API model ID.
 - Use an exact supported model ID, an unambiguous choice from this menu, or the user's already confirmed choice for the current task without asking again. If the user explicitly says “you choose,” explain the pick briefly and proceed; consider their task and budget rather than always selecting the most expensive settings.
@@ -43,16 +51,17 @@ Preferred call order:
 
 ```bash
 # Existing CLI on PATH
-gpt-image --model MODEL_ID -p "PROMPT" [-f OUT] [-i REF...] [-m MASK] [options]
+gpt-image --model MODEL_ID [-p "PROMPT"] [--pfile PROMPT_FILE] [-f OUT] [-i REF...] [-m MASK] [options]
 
 # Installed skill folder; use runtime-provided skill path when available
-uv run "$SKILL_DIR/scripts/generate.py" --model MODEL_ID -p "PROMPT" [-f OUT] [-i REF...] [-m MASK] [options]
+uv run "$SKILL_DIR/scripts/generate.py" --model MODEL_ID [-p "PROMPT"] [--pfile PROMPT_FILE] [-f OUT] [-i REF...] [-m MASK] [options]
 
 # Direct transient CLI when the user requested setup/one-off CLI execution
-uvx --from git+https://github.com/wuyoscar/gpt_image_2_skill gpt-image --model MODEL_ID -p "PROMPT" [options]
+uvx --from git+https://github.com/wuyoscar/gpt_image_2_skill gpt-image --model MODEL_ID [-p "PROMPT"] [--pfile PROMPT_FILE] [options]
 ```
 
 `scripts/generate.py` is a launcher: repo-local `src/gpt_image_cli` → installed `gpt-image` → PATH `gpt-image` → transient `uvx`/`uv` fallback.
+`--pfile` reads a UTF-8 prompt file and appends its contents after `--prompt` on a new line. `--prompt` can be omitted when `--pfile` is provided; at least one is required.
 
 ## Key and cost rules
 
@@ -64,30 +73,33 @@ uvx --from git+https://github.com/wuyoscar/gpt_image_2_skill gpt-image --model M
 
 ## Flags
 
-| Flag | Values | Use |
-|---|---|---|
-| `-p, --prompt` | string | Required prompt/edit instruction |
-| `-f, --file` | path | Output path; auto-named if omitted |
-| `-i, --image` | repeatable path | Use edits endpoint; supports multiple references |
-| `-m, --mask` | PNG path | Inpaint with alpha mask; requires `-i` |
-| `--model` | `gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst` | Agent must pass the resolved choice explicitly |
-| `--size` | `1k`, `2k`, `4k`, `portrait`, `landscape`, `square`, `wide`, `tall`, or literal | Canvas size |
-| `--quality` | `low`, `medium`, `high`, `auto`; 2.5 also `xhigh`, `max` | Cost/quality dial; check model-specific limits |
-| `-n, --n` | integer | Number of images |
-| `--background` | `auto`, `opaque`; 2.5 also `transparent` | Transparency requires PNG or WebP, not JPEG |
-| `--input-fidelity` | `low`, `high`; omitted by default | Edit-only; explicit 2.5 values are forwarded to the API, not assumed supported |
-| `--moderation` | `auto`, `low` | Generation moderation setting |
-| `--format` | `png`, `jpeg`, `webp` | Output encoding |
-| `--compression` | `0-100` | JPEG/WebP compression |
-| `--user` | string | Optional end-user identifier |
+| Flag               | Values                                                                          | Use                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `-p, --prompt`     | string                                                                          | Prompt/edit instruction; optional when `--pfile` is provided                                     |
+| `--pfile`          | path                                                                            | Read UTF-8 text and append after `--prompt` on a new line; either this or `--prompt` is required |
+| `-f, --file`       | path                                                                            | Output path; auto-named if omitted                                                               |
+| `-i, --image`      | repeatable path                                                                 | Use edits endpoint; supports multiple references                                                 |
+| `-m, --mask`       | PNG path                                                                        | Inpaint with alpha mask; requires `-i`                                                           |
+| `--model`          | `gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`                  | Agent must pass the resolved choice explicitly                                                   |
+| `--size`           | `1k`, `2k`, `4k`, `portrait`, `landscape`, `square`, `wide`, `tall`, or literal | Canvas size                                                                                      |
+| `--quality`        | `low`, `medium`, `high`, `auto`; 2.5 also `xhigh`, `max`                        | Cost/quality dial; check model-specific limits                                                   |
+| `-n, --n`          | integer                                                                         | Number of images                                                                                 |
+| `--background`     | `auto`, `opaque`; 2.5 also `transparent`                                        | Transparency requires PNG or WebP, not JPEG                                                      |
+| `--input-fidelity` | `low`, `high`; omitted by default                                               | Edit-only; explicit 2.5 values are forwarded to the API, not assumed supported                   |
+| `--moderation`     | `auto`, `low`                                                                   | Generation moderation setting                                                                    |
+| `--format`         | `png`, `jpeg`, `webp`                                                           | Output encoding                                                                                  |
+| `--compression`    | `0-100`                                                                         | JPEG/WebP compression                                                                            |
+| `--user`           | string                                                                          | Optional end-user identifier                                                                     |
 
 Quality starting points (not guarantees; keep the user's agreed setting). For 2.5, these take precedence over fixed quality advice in older craft references:
+
 - `low`: cheap drafts and broad exploration; multiple variants require user authorization.
 - `medium`: normal exploration, style probing, balanced cost.
 - `high`: CLI default and a candidate for final assets, dense text, diagrams and UI. On 2.5, evaluate against the task requirements; do not assume `medium` fails or a higher setting always wins.
 - `xhigh` / `max`: 2.5-only options for higher-quality work; discuss the cost trade-off before increasing an already agreed quality. Do not use them automatically for budget-conscious requests.
 
 Size policy:
+
 - default/social square: `1k` / `1024x1024`
 - poster/mobile/beauty: `portrait`
 - landscape/gameplay/photo: `landscape`
@@ -97,11 +109,11 @@ Size policy:
 
 ## Endpoint routing
 
-| Mode | Trigger | Endpoint |
-|---|---|---|
-| Text-to-image | no `-i` | `/v1/images/generations` |
-| Reference edit | one or more `-i` | `/v1/images/edits` |
-| Inpaint | `-i` + `-m` | `/v1/images/edits` with mask |
+| Mode           | Trigger          | Endpoint                     |
+| -------------- | ---------------- | ---------------------------- |
+| Text-to-image  | no `-i`          | `/v1/images/generations`     |
+| Reference edit | one or more `-i` | `/v1/images/edits`           |
+| Inpaint        | `-i` + `-m`      | `/v1/images/edits` with mask |
 
 Surface API errors verbatim enough for debugging; exit codes: `0` success, `1` API/refusal, `2` bad args/missing key.
 

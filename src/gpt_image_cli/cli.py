@@ -67,6 +67,11 @@ def _load_env_chain() -> None:
     Order: process env → ./.env → ~/.env. Existing process env wins so
     hosted agents or explicit shell exports are not replaced by local files.
     """
+    if getattr(sys, "frozen", False):
+        app_dir = Path(sys.executable).resolve().parent
+    else:
+        app_dir = Path(__file__).resolve().parent
+    load_dotenv(app_dir / ".env", override=False)
     load_dotenv(Path.cwd() / ".env", override=False)
     load_dotenv(Path.home() / ".env", override=False)
 
